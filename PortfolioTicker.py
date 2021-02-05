@@ -10,8 +10,9 @@
 # <bitbar.abouturl>http://url-to-about.com/</bitbar.abouturl>
 
 import requests
+import json
 
-from data import assets, db_watchlist
+from data import assets, watchlist
 
 GREEN = '\u001b[32;1m'
 RED = '\033[31m'
@@ -33,24 +34,24 @@ def get_format(db):
     return '{:<' + str(length) + '} {:<10} {:<7} {}'
 
 
-def format_number(number, useColor=False):
-    number = round(number, 3)
+def get_format_submenu(title):
+    length = len(title) + 5
+
+    return '{:<' + str(length) + '} {:<7} {}'
+
+
+def format_number(number, useColor=False, addSign=True):
+    number = round(number, 2)
     prefix = ''
     suffix = ''
 
     if number > 0:
-        prefix += '+'
-
-        # if number < 10:
-        # prefix += '0'
+        if addSign:
+            prefix += '+'
 
         if useColor:
             color = GREEN
     else:
-        # if -10 < number < 0:
-        # number = str(number)[1:]
-        # prefix = '-0'
-
         if useColor:
             color = RED
 
@@ -85,6 +86,12 @@ def prepare_asset_db(asset_db):
     for i in range(len(asset_db)):
         asset_db[i]['price'] = data[i]['regularMarketPrice']
         asset_db[i]['priceOpen'] = data[i]['regularMarketOpen']
+        if 'longName' in data[i]:
+            asset_db[i]['name'] = data[i]['longName']
+        else:
+            asset_db[i]['name'] = data[i]['shortName']
+
+        asset_db[i]['symbol'] = data[i]['symbol']
 
         amount = float(asset_db[i]['amount'])
         buyin = float(asset_db[i]['buyin'])
@@ -97,6 +104,13 @@ def prepare_asset_db(asset_db):
         asset_db[i]['profit'] = float(round(value - (amount * buyin), 2))
         asset_db[i]['change_today_euro'] = float(round(value - (amount * priceOpen), 2))
 
+        # only for stocks
+        if 'trailingAnnualDividendRate' in data[i]:
+            dividend = float(data[i]['trailingAnnualDividendRate'])
+            asset_db[i]['dividendYield'] = float(data[i]['trailingAnnualDividendYield'] * 100)
+            asset_db[i]['dividend'] = dividend
+            asset_db[i]['myDividend'] = dividend * amount
+
     return asset_db
 
 
@@ -106,6 +120,15 @@ def prepare_asset(asset):
     asset['profit'] = round(sum(item['profit'] for item in asset['db']), 2)
     asset['value'] = round(sum(item['value'] for item in asset['db']), 2)
     asset['change_today_euro'] = round(sum(item['change_today_euro'] for item in asset['db']), 2)
+
+    if 'dividend' in asset['db'][0]:
+        annualDividends = 0
+
+        for item in asset['db']:
+            if 'dividend' in item:
+                annualDividends += item['myDividend']
+
+        asset['myDividend'] = round(annualDividends, 2)
 
     return asset
 
@@ -117,18 +140,44 @@ def print_assets(asset):
 
     asset_db = sorted(asset_db, key=lambda entry: entry['value'], reverse=True)
 
-    print(assets_format.format(asset['title'], format_number(asset_value), format_number(asset_profit), FONT))
+    print(assets_format.format(asset['title'], format_number(asset_value, False, False), format_number(asset_profit),
+                               FONT))
 
     out = get_format(asset_db)
 
     print('--' + out.format('Change Today:', '', format_number(asset['change_today_euro'], True), FONT))
     print('--' + out.format('Change Total:', '', format_number(asset['profit'], True), FONT))
+
+    if 'myDividend' in asset:
+        print('--' + out.format('Annual Dividends:', '', format_number(asset['myDividend'], False, False), FONT))
+
     print('-----')
 
     for asset in asset_db:
         profit = float(asset['profit'])
 
-        print('--' + out.format(asset['title'], format_number(asset['value']), format_number(profit, True), FONT))
+        print(
+            '--' + out.format(asset['title'], format_number(asset['value'], False, False), format_number(profit, False),
+                              FONT))
+
+        out_sub = get_format_submenu(asset['name'])
+        print('----' + out_sub.format(asset['name'], asset['symbol'], FONT))
+        print('-------')
+        print('----' + out_sub.format('Amount', asset['amount'], FONT))
+        print('----' + out_sub.format('Price', asset['price'], FONT))
+        print('----' + out_sub.format('Value', format_number(asset['value'], False, False), FONT))
+        print('-------')
+        print('----' + out_sub.format('Profit', format_number(asset['profit'], True, True), FONT))
+
+        print('-------')
+
+        if 'dividend' in asset:
+            print('----' + out_sub.format('Dividends:', format_number(asset['myDividend'], False, False), FONT))
+            print('------' + out_sub.format('Annual Dividends:', format_number(asset['dividend'], False, False), FONT))
+            print('------' + out_sub.format('Dividends yield:',
+                                            str(format_number(asset['dividendYield'], False, False)) + '%', FONT))
+            print('------')
+            print('------' + out_sub.format('My Dividends:', format_number(asset['myDividend'], True, False), FONT))
 
 
 def print_watchlist(asset):
@@ -166,6 +215,7 @@ if __name__ == '__main__':
 
     print('-----')
     print('---')
-    print(assets_format.format('Total', format_number(total_value), format_number(total_profit, True), FONT))
+    print(assets_format.format('Total', format_number(total_value, False, False), format_number(total_profit, True),
+                               FONT))
     print('---')
     print_watchlist({'title': 'Watchlist', 'db': db_watchlist})
