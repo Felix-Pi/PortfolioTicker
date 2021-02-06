@@ -152,7 +152,7 @@ def print_assets(asset):
         print('--' + out.format('Annual Dividends:', '', format_number(asset['myDividend'], False, False), FONT))
 
     print('-----')
-
+    print('--' + out.format('Title', 'Value', 'Profit', FONT))
     for asset in asset_db:
         profit = float(asset['profit'])
 
@@ -168,6 +168,7 @@ def print_assets(asset):
         print('----' + out_sub.format('Value', format_number(asset['value'], False, False), FONT))
         print('-------')
         print('----' + out_sub.format('Profit', format_number(asset['profit'], True, True), FONT))
+        print('----' + out_sub.format('Profit Today', format_number(asset['change_today_euro'], True, True), FONT))
 
         print('-------')
 
@@ -194,6 +195,17 @@ def print_watchlist(asset):
         print('--' + out.format(asset['title'], '', asset['value'], FONT))
 
 
+def store_assets():
+
+    tmp = sorted(assets[0]['db'], key=lambda entry: entry['value'], reverse=True)
+
+    data = [d['value'] for d in tmp]
+    labels = [d['title'] for d in tmp]
+
+    with open('/Users/felixpieschka/dev/python/PortfolioTicker/charts/js/assets_save.js', 'w') as outfile:
+        outfile.write('var data = ' + str(data) + '; var labels = ' + str(labels) + ';')
+
+
 if __name__ == '__main__':
     for asset in assets:
         prepare_asset(asset)
@@ -207,6 +219,7 @@ if __name__ == '__main__':
     print('---')
 
     assets_format = get_format(assets)
+    print(assets_format.format('Title', 'Value', 'Profit', FONT))
 
     assets = sorted(assets, key=lambda entry: entry['value'], reverse=True)
 
@@ -218,4 +231,6 @@ if __name__ == '__main__':
     print(assets_format.format('Total', format_number(total_value, False, False), format_number(total_profit, True),
                                FONT))
     print('---')
-    print_watchlist({'title': 'Watchlist', 'db': db_watchlist})
+    print_watchlist(watchlist)
+
+store_assets()
