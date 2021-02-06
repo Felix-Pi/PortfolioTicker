@@ -196,7 +196,6 @@ def print_watchlist(asset):
 
 
 def store_assets():
-
     tmp = sorted(assets[0]['db'], key=lambda entry: entry['value'], reverse=True)
 
     data = [d['value'] for d in tmp]
@@ -210,8 +209,9 @@ if __name__ == '__main__':
     for asset in assets:
         prepare_asset(asset)
 
-    total_profit = round(sum(item['profit'] for item in assets), 2)
     total_value = round(sum(item['value'] for item in assets), 2)
+    total_profit = round(sum(item['profit'] for item in assets), 2)
+    total_change_today = round(sum(item['change_today_euro'] for item in assets), 2)
 
     out = '{} {}'
     print(out.format(format_number(total_profit), FONT))
@@ -228,6 +228,7 @@ if __name__ == '__main__':
 
     print('-----')
     print('---')
+    print(assets_format.format('Today', '', format_number(total_change_today, True), FONT))
     print(assets_format.format('Total', format_number(total_value, False, False), format_number(total_profit, True),
                                FONT))
     print('---')
