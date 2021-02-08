@@ -81,6 +81,12 @@ def get_stock_data(stock_list):
 def prepare_asset_db(asset_db):
     data = get_stock_data(asset_db)
 
+    if len(asset_db) != len(data):
+        data_symbols = [item['symbol'] for item in data]
+        asset_db_symbols = [item['symbol'] for item in asset_db]
+
+        print('Symbol(s) {} do not exist!'.format([x for x in asset_db_symbols if x not in data_symbols]))
+
     assert len(asset_db) == len(data)
 
     for i in range(len(asset_db)):
